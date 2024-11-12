@@ -56,4 +56,40 @@ async function registerUser(req, res) {
   }
 }
 
-export { registerUser };
+async function login(req, res) {
+  try {
+    const { email, username, password } = req.body;
+    console.log(email, username);
+    if (!email || !password)
+      throw new ApiError(400, "Email or Username required.");
+
+    if (!password) {
+      throw new ApiError(400, "Password is required.");
+    }
+
+    const user = await User.findOne({ $or: [{ email }, { username }] });
+    if (!user) throw new ApiError(400, "User not exists.");
+
+    const isPasswordValid = await user.isPasswordCorrect(password);
+    if (!isPasswordValid) {
+      throw new ApiError(401, "Invalid credentials.");
+    }
+
+    const accessToken = user.generateAccessToken();
+    const refreshToken = user.generateRefreshToken();
+
+    user.refreshToken = refreshToken;
+    await user.save();
+
+    return res
+      .status(200)
+      .cookie("token", accessToken)
+      .json(new ApiSuccess(200, "User successfully logged in."));
+  } catch (error) {
+    return res
+      .status(error?.statusCode || 500)
+      .json(new ApiError(400, error?.message));
+  }
+}
+
+export { registerUser, login };
