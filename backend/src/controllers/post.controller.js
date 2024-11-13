@@ -35,14 +35,48 @@ async function createPost(req, res) {
   }
 }
 
+async function getAllPosts(req, res) {
+  try {
+    const posts = await Post.find({}).populate("userId");
+    return res
+      .status(200)
+      .json(new ApiSuccess(200, "All Posts fetched successfully", { posts }));
+  } catch (error) {
+    return res
+      .status(error?.statusCode || 500)
+      .json(new ApiError(400, error?.message));
+  }
+}
+
+async function getPost(req, res) {
+  try {
+    const postId = req.params.id;
+    if (!postId) throw new ApiError(400, "Not a valid post.");
+
+    const post = await Post.findById(postId).populate("userId");
+    if (!post) throw new ApiError(400, "Post does not exist.");
+
+    return res
+      .status(200)
+      .json(new ApiSuccess(200, "Post fetched successfully", { post }));
+  } catch (error) {
+    return res
+      .status(error?.statusCode)
+      .json(new ApiError(400, error?.message));
+  }
+}
 async function deletePost(req, res) {
   try {
     const postId = req.params.id;
     if (!postId) throw new ApiError(400, "Not a valid post.");
     await Post.findByIdAndDelete(postId);
-    const user = await User.findById(req.user._id);
-    user.posts = user.posts.filter((id) => id !== postId);
-    await user.save();
+    await User.findByIdAndUpdate(
+      req.user._id,
+      {
+        $pull: { posts: postId },
+      },
+      { new: true }
+    );
     return res
       .status(200)
       .json(new ApiSuccess(200, "Post deleted successfully."));
@@ -52,4 +86,4 @@ async function deletePost(req, res) {
       .json(new ApiError(400, error?.message));
   }
 }
-export { createPost, deletePost };
+export { createPost, deletePost, getAllPosts, getPost };
