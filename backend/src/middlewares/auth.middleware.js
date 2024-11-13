@@ -24,4 +24,21 @@ async function isAuthenticated(req, res, next) {
   }
 }
 
-export { isAuthenticated };
+async function isAuthorized(req, res, next) {
+  try {
+    const postId = req.params.id;
+    if (!postId) throw new ApiError(400, "Not a valid post.");
+    const userId = req.user._id;
+    if (!userId) throw new ApiError(400, "Not a valid user.");
+    const user = await User.findById(userId);
+    const isPostCreatedByUser = user.isPostPresent(postId);
+    if (!isPostCreatedByUser)
+      throw new ApiError(401, "Not authorized to delete.");
+    next();
+  } catch (error) {
+    return res
+      .status(error?.statusCode || 500)
+      .json(new ApiError(400, error?.message));
+  }
+}
+export { isAuthenticated, isAuthorized };

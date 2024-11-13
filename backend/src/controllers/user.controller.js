@@ -127,4 +127,20 @@ async function logout(req, res) {
       .json(new ApiError(400, error?.message));
   }
 }
-export { register, login, logout };
+
+async function getUser(req, res) {
+  try {
+    const userId = req.params?.id;
+    if (!userId) throw new ApiError(400, "Not a valid user.");
+    const user = await User.findById(userId).select("-password -refreshToken");
+    if (!user) throw new ApiError(400, "User does not exist.");
+    return res
+      .status(200)
+      .json(new ApiSuccess(200, "User fetched successfully.", { user }));
+  } catch (error) {
+    return res
+      .status(error?.statusCode || 500)
+      .json(new ApiError(400, error?.message));
+  }
+}
+export { register, login, logout, getUser };

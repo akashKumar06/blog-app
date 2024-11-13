@@ -91,5 +91,8 @@ userSchema.methods.generateAccessToken = function () {
   );
 };
 
+userSchema.methods.isPostPresent = function (postId) {
+  return this.posts.includes(postId);
+};
 const User = mongoose.model("User", userSchema);
 export default User;
