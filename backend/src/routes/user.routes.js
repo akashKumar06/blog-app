@@ -1,6 +1,7 @@
 import express from "express";
-import { registerUser, login } from "../controllers/user.controller.js";
+import { register, login, logout } from "../controllers/user.controller.js";
 import upload from "../middlewares/multer.middleware.js";
+import { isAuthenticated } from "../middlewares/auth.middleware.js";
 const router = express.Router();
 
 router.post(
@@ -9,7 +10,8 @@ router.post(
     { name: "avatar", maxCount: 1 },
     { name: "coverImage", maxCount: 1 },
   ]),
-  registerUser
+  register
 );
 router.post("/login", login);
+router.post("/logout", isAuthenticated, logout);
 export default router;

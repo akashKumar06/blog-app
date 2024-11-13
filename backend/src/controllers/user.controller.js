@@ -3,7 +3,7 @@ import ApiError from "../utils/ApiError.js";
 import ApiSuccess from "../utils/ApiSuccess.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 
-async function registerUser(req, res) {
+async function register(req, res) {
   try {
     const { username, fullname, email, phoneNo, password } = req.body;
     if (
@@ -59,7 +59,6 @@ async function registerUser(req, res) {
 async function login(req, res) {
   try {
     const { email, username, password } = req.body;
-    console.log(email, username);
     if (!email || !password)
       throw new ApiError(400, "Email or Username required.");
 
@@ -79,12 +78,26 @@ async function login(req, res) {
     const refreshToken = user.generateRefreshToken();
 
     user.refreshToken = refreshToken;
-    await user.save();
+    await user.save({ validateBeforeSave: false });
 
+    const loggedInUser = await User.findById(user._id).select(
+      "-password -refreshToken"
+    );
+    const options = {
+      httpOnly: true,
+      secure: true,
+    };
     return res
       .status(200)
-      .cookie("token", accessToken)
-      .json(new ApiSuccess(200, "User successfully logged in."));
+      .cookie("accessToken", accessToken, options)
+      .cookie("refreshToken", refreshToken, options)
+      .json(
+        new ApiSuccess(200, "User successfully logged in.", {
+          loggedInUser,
+          refreshToken,
+          accessToken,
+        })
+      );
   } catch (error) {
     return res
       .status(error?.statusCode || 500)
@@ -92,4 +105,26 @@ async function login(req, res) {
   }
 }
 
-export { registerUser, login };
+async function logout(req, res) {
+  try {
+    await User.findByIdAndUpdate(
+      req.user._id,
+      { $set: { refreshToken: undefined } },
+      { new: true }
+    );
+    const options = {
+      httpOnly: true,
+      secure: true,
+    };
+    return res
+      .status(200)
+      .clearCookie("accessToken", options)
+      .clearCookie("refreshToken", options)
+      .json(new ApiSuccess(200, "User logged out successfully."));
+  } catch (error) {
+    return res
+      .status(error?.statusCode || 500)
+      .json(new ApiError(400, error?.message));
+  }
+}
+export { register, login, logout };
